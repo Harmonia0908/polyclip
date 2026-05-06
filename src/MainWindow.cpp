@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QTextEdit>
+#include <QTextCursor>
 #include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -96,6 +97,10 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::updateLog(const QString &text)
 {
     m_logEdit->setPlainText(text);
+    QTextCursor cursor = m_logEdit->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    m_logEdit->setTextCursor(cursor);
+    m_logEdit->ensureCursorVisible();
 }
 
 void MainWindow::updateVertexCounts(int subjectCount, int clipCount)
