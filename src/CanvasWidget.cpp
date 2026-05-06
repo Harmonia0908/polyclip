@@ -8,10 +8,6 @@
 #include <cmath>
 #include <sstream>
 
-namespace {
-const double INSERT_EDGE_MAX_DISTANCE = 35.0;
-}
-
 CanvasWidget::CanvasWidget(QWidget *parent)
     : QWidget(parent),
       m_showIntersections(true),
@@ -347,10 +343,6 @@ void CanvasWidget::mouseDoubleClickEvent(QMouseEvent *event)
                          .arg(nextEdge));
         recut();
         emitPolygonCounts();
-    } else {
-        addStatusLog(QString::fromUtf8("新增顶点失败：请双击靠近当前编辑多边形边的位置。"));
-        emitCurrentLog();
-        update();
     }
 }
 
@@ -569,12 +561,6 @@ bool CanvasWidget::tryInsertVertex(std::vector<geom::Point> &poly, const geom::P
 {
     int edge = findNearestEdge(p, poly);
     if (edge < 0) {
-        return false;
-    }
-
-    const geom::Point &a = poly[static_cast<size_t>(edge)];
-    const geom::Point &b = poly[(static_cast<size_t>(edge) + 1) % poly.size()];
-    if (geom::pointSegmentDistance(p, a, b) > INSERT_EDGE_MAX_DISTANCE) {
         return false;
     }
 
