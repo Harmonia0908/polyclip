@@ -2,6 +2,7 @@
 
 #include "CanvasWidget.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -22,11 +23,18 @@ MainWindow::MainWindow(QWidget *parent)
     QVBoxLayout *sideLayout = new QVBoxLayout();
     QLabel *title = new QLabel(QString::fromUtf8("算法步骤日志"), this);
     QLabel *editTargetLabel = new QLabel(QString::fromUtf8("当前编辑对象"), this);
+    QLabel *presetTitle = new QLabel(QString::fromUtf8("预设案例"), this);
     QComboBox *editTargetCombo = new QComboBox(this);
     QPushButton *recutButton = new QPushButton(QString::fromUtf8("重新裁切"), this);
-    QPushButton *resetButton = new QPushButton(QString::fromUtf8("重置示例"), this);
-    QPushButton *toggleIntersectionsButton = new QPushButton(QString::fromUtf8("显示/隐藏交点"), this);
-    QPushButton *toggleEntryExitButton = new QPushButton(QString::fromUtf8("显示/隐藏 entry/exit 标记"), this);
+    QPushButton *defaultButton = new QPushButton(QString::fromUtf8("默认示例"), this);
+    QPushButton *concaveButton = new QPushButton(QString::fromUtf8("凹多边形裁切"), this);
+    QPushButton *convexButton = new QPushButton(QString::fromUtf8("凸多边形裁切"), this);
+    QPushButton *insideButton = new QPushButton(QString::fromUtf8("Subject 完全在 Clip 内"), this);
+    QPushButton *disjointButton = new QPushButton(QString::fromUtf8("完全不相交"), this);
+    QPushButton *vertexOnEdgeButton = new QPushButton(QString::fromUtf8("顶点落在边上"), this);
+    QPushButton *tangentButton = new QPushButton(QString::fromUtf8("边界相切"), this);
+    QCheckBox *showIntersectionsCheck = new QCheckBox(QString::fromUtf8("显示交点"), this);
+    QCheckBox *showEntryExitCheck = new QCheckBox(QString::fromUtf8("显示 entry/exit 标记"), this);
     QLabel *tipsLabel = new QLabel(QString::fromUtf8("双击新增顶点，右键删除顶点，拖拽移动顶点"), this);
 
     m_logEdit->setReadOnly(true);
@@ -34,6 +42,8 @@ MainWindow::MainWindow(QWidget *parent)
     tipsLabel->setWordWrap(true);
     editTargetCombo->addItem(QString::fromUtf8("Subject Polygon"));
     editTargetCombo->addItem(QString::fromUtf8("Clip Polygon"));
+    showIntersectionsCheck->setChecked(true);
+    showEntryExitCheck->setChecked(true);
 
     sideLayout->addWidget(editTargetLabel);
     sideLayout->addWidget(editTargetCombo);
@@ -42,9 +52,17 @@ MainWindow::MainWindow(QWidget *parent)
     sideLayout->addWidget(tipsLabel);
     sideLayout->addSpacing(10);
     sideLayout->addWidget(recutButton);
-    sideLayout->addWidget(resetButton);
-    sideLayout->addWidget(toggleIntersectionsButton);
-    sideLayout->addWidget(toggleEntryExitButton);
+    sideLayout->addWidget(defaultButton);
+    sideLayout->addWidget(showIntersectionsCheck);
+    sideLayout->addWidget(showEntryExitCheck);
+    sideLayout->addSpacing(10);
+    sideLayout->addWidget(presetTitle);
+    sideLayout->addWidget(concaveButton);
+    sideLayout->addWidget(convexButton);
+    sideLayout->addWidget(insideButton);
+    sideLayout->addWidget(disjointButton);
+    sideLayout->addWidget(vertexOnEdgeButton);
+    sideLayout->addWidget(tangentButton);
     sideLayout->addSpacing(10);
     sideLayout->addWidget(title);
     sideLayout->addWidget(m_logEdit, 1);
@@ -57,9 +75,15 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1180, 650);
 
     connect(recutButton, SIGNAL(clicked()), m_canvas, SLOT(recut()));
-    connect(resetButton, SIGNAL(clicked()), m_canvas, SLOT(resetExample()));
-    connect(toggleIntersectionsButton, SIGNAL(clicked()), m_canvas, SLOT(toggleIntersections()));
-    connect(toggleEntryExitButton, SIGNAL(clicked()), m_canvas, SLOT(toggleEntryExitLabels()));
+    connect(defaultButton, SIGNAL(clicked()), m_canvas, SLOT(loadDefaultExample()));
+    connect(concaveButton, SIGNAL(clicked()), m_canvas, SLOT(loadConcaveExample()));
+    connect(convexButton, SIGNAL(clicked()), m_canvas, SLOT(loadConvexExample()));
+    connect(insideButton, SIGNAL(clicked()), m_canvas, SLOT(loadSubjectInsideExample()));
+    connect(disjointButton, SIGNAL(clicked()), m_canvas, SLOT(loadDisjointExample()));
+    connect(vertexOnEdgeButton, SIGNAL(clicked()), m_canvas, SLOT(loadVertexOnEdgeExample()));
+    connect(tangentButton, SIGNAL(clicked()), m_canvas, SLOT(loadTangentExample()));
+    connect(showIntersectionsCheck, SIGNAL(toggled(bool)), m_canvas, SLOT(setShowIntersections(bool)));
+    connect(showEntryExitCheck, SIGNAL(toggled(bool)), m_canvas, SLOT(setShowEntryExitLabels(bool)));
     connect(editTargetCombo, SIGNAL(currentIndexChanged(int)), m_canvas, SLOT(setEditTarget(int)));
     connect(m_canvas, SIGNAL(logChanged(QString)), this, SLOT(updateLog(QString)));
     connect(m_canvas, SIGNAL(polygonCountsChanged(int,int)), this, SLOT(updateVertexCounts(int,int)));

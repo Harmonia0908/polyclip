@@ -144,6 +144,65 @@ double pointSegmentDistance(const Point &p, const Point &a, const Point &b)
     return std::sqrt(distanceSquared(p, projection));
 }
 
+bool segmentsProperlyIntersect(const Point &a, const Point &b, const Point &c, const Point &d)
+{
+    double c1 = cross(a, b, c);
+    double c2 = cross(a, b, d);
+    double c3 = cross(c, d, a);
+    double c4 = cross(c, d, b);
+
+    // 严格穿越：两个端点分别位于对方线段所在直线两侧。
+    // 共线、端点接触等边界情况由 isSimplePolygon 额外处理。
+    return ((c1 > EPS && c2 < -EPS) || (c1 < -EPS && c2 > EPS)) &&
+           ((c3 > EPS && c4 < -EPS) || (c3 < -EPS && c4 > EPS));
+}
+
+bool isSimplePolygon(const std::vector<Point> &poly)
+{
+    if (poly.size() < 3) {
+        return false;
+    }
+
+    if (std::fabs(polygonArea(poly)) <= EPS) {
+        return false;
+    }
+
+    for (size_t i = 0; i < poly.size(); ++i) {
+        if (samePoint(poly[i], poly[(i + 1) % poly.size()])) {
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < poly.size(); ++i) {
+        Point a = poly[i];
+        Point b = poly[(i + 1) % poly.size()];
+
+        for (size_t j = i + 1; j < poly.size(); ++j) {
+            bool sharesForwardEndpoint = ((i + 1) % poly.size()) == j;
+            bool firstAndLastEdge = (i == 0 && j == poly.size() - 1);
+            if (sharesForwardEndpoint || firstAndLastEdge) {
+                continue;
+            }
+
+            Point c = poly[j];
+            Point d = poly[(j + 1) % poly.size()];
+
+            if (segmentsProperlyIntersect(a, b, c, d)) {
+                return false;
+            }
+
+            // 非相邻边不允许端点落在对方边上。这样能检测顶点拖到另一条边、
+            // 重复顶点、共线重叠等常见非法输入。
+            if (pointOnSegment(a, c, d) || pointOnSegment(b, c, d) ||
+                pointOnSegment(c, a, b) || pointOnSegment(d, a, b)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 double segmentParameter(const Point &a, const Point &b, const Point &p)
 {
     Point ab = b - a;

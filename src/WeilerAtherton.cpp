@@ -46,8 +46,8 @@ struct PendingNode {
 
 struct Event {
     Point p;
-    int subjectEdge;
-    int clipEdge;
+    int subjectEdgeIndex;
+    int clipEdgeIndex;
     double subjectAlpha;
     double clipAlpha;
     bool overlap;
@@ -73,6 +73,14 @@ std::string pointToString(const Point &p)
     std::ostringstream oss;
     oss.precision(3);
     oss << std::fixed << "(" << p.x << ", " << p.y << ")";
+    return oss.str();
+}
+
+std::string alphaToString(double alpha)
+{
+    std::ostringstream oss;
+    oss.precision(6);
+    oss << std::fixed << alpha;
     return oss.str();
 }
 
@@ -285,9 +293,9 @@ void traceResults(Node *subjectStart, ClipResult &result)
 
 void snapIntersectionPoint(Event &event, const std::vector<Point> &subject, const std::vector<Point> &clipPolygon)
 {
-    int si = event.subjectEdge;
+    int si = event.subjectEdgeIndex;
     int sj = (si + 1) % static_cast<int>(subject.size());
-    int ci = event.clipEdge;
+    int ci = event.clipEdgeIndex;
     int cj = (ci + 1) % static_cast<int>(clipPolygon.size());
 
     if (sameDisplayPoint(event.p, subject[si])) {
@@ -307,10 +315,19 @@ void snapIntersectionPoint(Event &event, const std::vector<Point> &subject, cons
     }
 }
 
-bool eventAlreadyExists(const std::vector<Event> &events, const Point &p)
+bool sameEvent(const Event &a, const Event &b)
+{
+    return a.subjectEdgeIndex == b.subjectEdgeIndex &&
+           a.clipEdgeIndex == b.clipEdgeIndex &&
+           geom::nearlyEqual(a.subjectAlpha, b.subjectAlpha, geom::EPS) &&
+           geom::nearlyEqual(a.clipAlpha, b.clipAlpha, geom::EPS) &&
+           geom::samePoint(a.p, b.p, geom::EPS);
+}
+
+bool eventAlreadyExists(const std::vector<Event> &events, const Event &event)
 {
     for (size_t i = 0; i < events.size(); ++i) {
-        if (sameDisplayPoint(events[i].p, p)) {
+        if (sameEvent(events[i], event)) {
             return true;
         }
     }
@@ -325,24 +342,19 @@ Node *nodeForEvent(
     std::vector<Node *> &owned)
 {
     double alpha = subjectNode ? event.subjectAlpha : event.clipAlpha;
-    int edge = subjectNode ? event.subjectEdge : event.clipEdge;
-    int vertexCount = static_cast<int>(baseNodes.size());
+    int edge = subjectNode ? event.subjectEdgeIndex : event.clipEdgeIndex;
 
-    Node *node = NULL;
-    if (alpha <= DISPLAY_EPS) {
-        node = baseNodes[edge];
-    } else if (alpha >= 1.0 - DISPLAY_EPS) {
-        node = baseNodes[(edge + 1) % vertexCount];
-    } else {
-        node = createNode(owned, event.p, subjectNode);
-        node->alpha = alpha;
-        node->edgeIndex = edge;
+    // 交点即使落在原始顶点上，也作为“边上的事件节点”插入。
+    // 这样同一个坐标处来自不同边对的事件不会复用同一个顶点 Node，
+    // 避免 pair 指针被后续事件覆盖，提升端点相交和顶点落边场景的稳定性。
+    Node *node = createNode(owned, event.p, subjectNode);
+    node->alpha = alpha;
+    node->edgeIndex = edge;
 
-        PendingNode pendingNode;
-        pendingNode.alpha = alpha;
-        pendingNode.node = node;
-        pending[edge].push_back(pendingNode);
-    }
+    PendingNode pendingNode;
+    pendingNode.alpha = alpha;
+    pendingNode.node = node;
+    pending[edge].push_back(pendingNode);
 
     node->p = event.p;
     node->intersection = true;
@@ -408,14 +420,14 @@ ClipResult WeilerAtherton::clip(
 
                 Event event;
                 event.p = intersections[k].point;
-                event.subjectEdge = static_cast<int>(i);
-                event.clipEdge = static_cast<int>(j);
+                event.subjectEdgeIndex = static_cast<int>(i);
+                event.clipEdgeIndex = static_cast<int>(j);
                 event.subjectAlpha = intersections[k].t;
                 event.clipAlpha = intersections[k].u;
                 event.overlap = intersections[k].overlap;
                 snapIntersectionPoint(event, subject, clipPolygon);
 
-                if (!eventAlreadyExists(events, event.p)) {
+                if (!eventAlreadyExists(events, event)) {
                     events.push_back(event);
                 }
             }
@@ -449,9 +461,11 @@ ClipResult WeilerAtherton::clip(
         cNode->pair = sNode;
 
         result.logs.push_back(
-            std::string("插入交点 ") + pointToString(events[i].p) +
-            " 到 Subject 边 " + std::to_string(events[i].subjectEdge) +
-            " 和 Clip 边 " + std::to_string(events[i].clipEdge) + "。");
+            std::string("交点：Subject edge ") + std::to_string(events[i].subjectEdgeIndex) +
+            ", Clip edge " + std::to_string(events[i].clipEdgeIndex) +
+            ", alphaS=" + alphaToString(events[i].subjectAlpha) +
+            ", alphaC=" + alphaToString(events[i].clipAlpha) +
+            ", point=" + pointToString(events[i].p) + "。");
     }
 
     insertPendingNodes(subjectNodes, subjectPending);

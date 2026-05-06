@@ -43,6 +43,8 @@ bool pointOnSegment(const Point &p, const Point &a, const Point &b);
 bool pointInPolygon(const std::vector<Point> &poly, const Point &p, bool includeBoundary);
 
 double pointSegmentDistance(const Point &p, const Point &a, const Point &b);
+bool segmentsProperlyIntersect(const Point &a, const Point &b, const Point &c, const Point &d);
+bool isSimplePolygon(const std::vector<Point> &poly);
 double segmentParameter(const Point &a, const Point &b, const Point &p);
 std::vector<SegmentIntersection> segmentIntersections(
     const Point &a,
